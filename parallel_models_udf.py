@@ -1,12 +1,14 @@
 # Databricks notebook source
 # MAGIC %md #Training machine learning models in parallel using PandasUDFs on Databricks  
-# MAGIC 
+# MAGIC
 # MAGIC Data Scientists often need to fit models to different groups of data. A data scientist in real estate industry may find it more effective to create separate models per geographic area due to regional difference that impact model performance.  
-# MAGIC 
+# MAGIC
 # MAGIC PandasUDFs on Databricks provide a mechanism for fitting machine leaning models on different groups of data in parallel. Models can be tuned using Hyperopt, an optimization framework built into the Machine Learning Runtime. Groups of fitted models can be saved to an MLflow Tracking Server instance and promoted to the Model Registry for inference.
 
 # COMMAND ----------
 
+# comment for demo
+# 
 from collections import OrderedDict
 import datetime
 from pickle import dump
@@ -183,7 +185,7 @@ def create_preprocessing_transform(categorical_features: List[str], numerical_fe
 # COMMAND ----------
 
 # MAGIC %md ### Define the PandasUDF  
-# MAGIC 
+# MAGIC
 # MAGIC  - The **configure_model** wrapper function allows us to make several parameters available to our PandasUDF, **train_model**, which receives a Pandas DataFrame and returns a Pandas DataFrame.  
 # MAGIC  
 # MAGIC  - The data for each ship will be passed into a separate instance of our PandasUDF and each instance will be executed in parallel in different tasks on our cluster. We will capture information about where each model is trained to confirm this behavior.
@@ -345,7 +347,7 @@ display(spark.table('default.best_model_stats'))
 
 # MAGIC %md ## Tuning our models using Hyperopt
 # MAGIC Now that we can fit models in parallel on different groups of data, we shift toward model tuning. Compared to arbitrarily choosing different model parameters to test, the Hyperopt optimization library, which is built into the Databricks Machine Learning runtime,  provides a more robust mechanism for intelligently searching a broader hyperparameter space, potentially leading to better models.
-# MAGIC 
+# MAGIC
 # MAGIC We can incorporate a hyper-parameter search using Hyperopt into our Pandas UDF. Let's first fit a simple example on a single group for illustration purposes.
 
 # COMMAND ----------
@@ -372,7 +374,7 @@ parameter_search_space = {'n_estimators':      1000,
 
 # MAGIC %md ### Specify a Hyperopt Objective Function  
 # MAGIC We create a function that can receive combinations of hyper-parameter values from Hyperopt, fit an XGBoost model using those parameters, and return information to Hyperopt. This information, specifically the models 'loss', will be used by Hyperot to influence which hyper-parameter combinations should be tested next. Our loss will be calculated as 1 - the area under the curve (auc). Thus, we will find the model with the highest auc value, where 1 is the highest possible value.
-# MAGIC 
+# MAGIC
 # MAGIC  Will will again add a parent function, **configure_object_fn**, to pass additional information to our Hyperopt objective function.
 
 # COMMAND ----------
@@ -720,7 +722,7 @@ def get_new_run(experiment_location: str, run_name: str) -> str:
 
 # MAGIC %md ### Working with custom MLflow models  
 # MAGIC Custom MLflow models provide a way to store special transformations as an MLflow model flavor that can be easily managed. You may want to alter the behavior of a modeling framework's built-in predict method or store a transformation that is not part of a supported ml framework. Both of these use cases are possible with Custom MLflow models.  
-# MAGIC 
+# MAGIC
 # MAGIC See a simple example below that receive and input and then multiplies that input by a number. We can store this custom model in MLflow, load it, and apply it to a Spark DataFrame.
 
 # COMMAND ----------
@@ -804,11 +806,11 @@ class GroupInferenceModel(mlflow.pyfunc.PythonModel):
 # COMMAND ----------
 
 # MAGIC %md ### Adding the custom MLflow model to our PandasUDF and Logging to MLflow  
-# MAGIC 
+# MAGIC
 # MAGIC Model metrics and parameters are stored in csv files within each group's model artifact directory. We also include the best model parameters found by Hyperopt within our output Delta table as a Spark MapType.
-# MAGIC 
+# MAGIC
 # MAGIC In addition, we leverage Hyperopt's early stopping functionality. Similar to early stopping for XGBoost, we can end our Hyperopt training runs if performance does not improve. Since we want to find our best models efficiently and are now working with larger datasets, we will instruct Hyperopt to stop testing hyper-parameters if our loss functions does not decrease after 25 trials.
-# MAGIC 
+# MAGIC
 # MAGIC We set the **early_stop_fn** to **no_progress_loss**, which specifies the theshold beyond which the loss for a trial must improve. We will specify that the model loss must inprove by one half of a percentage point after 25 trials or else model training will stop. Details of the early stopping function [is available here](https://github.com/hyperopt/hyperopt/blob/master/hyperopt/early_stop.py), which is referenced in the [databricks documentation](https://docs.databricks.com/applications/machine-learning/automl-hyperparam-tuning/hyperopt-concepts.html#fmin).
 
 # COMMAND ----------
@@ -1087,9 +1089,9 @@ promote_to_prod = client.transition_model_version_stage(name=model_registry_name
 
 # MAGIC %md ### Create an inference UDF
 # MAGIC Our PandasUDF for inference is reletively simple. We will configure the PandasUDF to load our Production meta model from the Model Registry. Our helper function will capture the model's unique identifier, which we will use to load the model into the notebook.
-# MAGIC 
+# MAGIC
 # MAGIC Similar to our model training UDF, our inference UDF will extract the group name of the data it receives. Then, the UDF will load the approriate group-level model and score the group's data.  
-# MAGIC 
+# MAGIC
 # MAGIC Our UDF will return the group name, unique id of the record, and the classification probabilities.
 
 # COMMAND ----------
