@@ -11,4 +11,3 @@ The Databricks Notebook within this repository provides a detailed, step-by-step
 
  This repository can be cloned into a Databricks Repo; the code is self contained and can be run in any Databricks environment. The most recent testing of this notebook leveraged the Databricks ML Runtime version 10.5.
 
- delted this line
